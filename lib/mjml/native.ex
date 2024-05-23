@@ -20,15 +20,30 @@ defmodule Mjml.Native do
     2.16
   )
 
-  use RustlerPrecompiled,
-    otp_app: :mjml,
-    crate: "mjml_nif",
-    base_url: "#{github_url}/releases/download/v#{version}",
-    force_build: System.get_env("MJML_BUILD") in ["1", "true"],
-    version: version,
-    targets: targets,
-    nif_versions: nif_versions
+  use_local_precompiled = System.get_env("LOCAL_PRECOMPILED_NIF", "false")
 
+  cond do
+    use_local_precompiled == "true" or use_local_precompiled == "1" ->
+      quote do
+        use Rustler,
+          otp_app: :mjml,
+          crate: "mjml_nif",
+          skip_compilation?: true,
+          load_from: {:mjml, "priv/native/libmjml_nif"}
+        end
+
+    true ->
+      quote do
+        use RustlerPrecompiled,
+          otp_app: :mjml,
+          crate: "mjml_nif",
+          base_url: "#{github_url}/releases/download/v#{version}",
+          force_build: System.get_env("MJML_BUILD") in ["1", "true"],
+          version: version,
+          targets: targets,
+          nif_versions: nif_versions
+      end
+  end
   def to_html(_mjml, _render_options), do: error()
   defp error(), do: :erlang.nif_error(:nif_not_loaded)
 end
